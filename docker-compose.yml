@@ -9,7 +9,8 @@ services:
       HF_HUB_ENABLE_HF_TRANSFER: "1"
       HF_TOKEN: ${HF_TOKEN:-}
       HF_ENDPOINT: ${HF_ENDPOINT:-}
-      MODEL_NAME: ${MODEL_NAME:-unsloth/gemma-3-4b-it}
+      MODEL_NAME: ${MODEL_NAME:-unsloth/gemma-3-270m-it}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     volumes:
       - .:/workspace/work
     command: ["python", "src/train.py"]
@@ -35,7 +36,8 @@ services:
       HF_HUB_ENABLE_HF_TRANSFER: "1"
       HF_TOKEN: ${HF_TOKEN:-}
       HF_ENDPOINT: ${HF_ENDPOINT:-}
-      MODEL_NAME: ${MODEL_NAME:-unsloth/gemma-3-4b-it}
+      MODEL_NAME: ${MODEL_NAME:-unsloth/gemma-3-270m-it}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     volumes:
       - .:/workspace/work
     command: ["python", "src/infer.py"]

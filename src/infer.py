@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run inference with a Gemma 3 LoRA adapter trained by src/train.py."""
+"""Run inference with a Gemma 3 270M LoRA adapter trained by src/train.py."""
 
 from __future__ import annotations
 
@@ -7,61 +7,91 @@ import argparse
 import os
 from pathlib import Path
 
+from transformers import TextStreamer
 from unsloth import FastModel
 from unsloth.chat_templates import get_chat_template
 
+SYSTEM_PROMPT = (
+    "You are a master storyteller. Write a short, imaginative story based on "
+    "the user's request. The story should be concise and suitable for a general audience."
+)
+
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Infer with a fine-tuned Gemma 3 adapter")
+    parser = argparse.ArgumentParser(description="Infer with a fine-tuned Gemma 3 270M adapter")
     parser.add_argument(
         "--model-name",
-        default=os.environ.get("MODEL_NAME", "unsloth/gemma-3-4b-it"),
+        default=os.environ.get("MODEL_NAME", "unsloth/gemma-3-270m-it"),
     )
     parser.add_argument("--adapter-dir", default="outputs/lora")
-    parser.add_argument("--prompt", default="Continue the Fibonacci sequence: 1, 1, 2, 3, 5, 8,")
+    parser.add_argument(
+        "--prompt",
+        default="A city where shadows have a life of their own.",
+    )
     parser.add_argument("--max-seq-length", type=int, default=2048)
-    parser.add_argument("--max-new-tokens", type=int, default=128)
-    parser.add_argument("--load-in-4bit", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--max-new-tokens", type=int, default=1024)
+    parser.add_argument(
+        "--load-in-4bit",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
+    parser.add_argument(
+        "--compare-base",
+        action="store_true",
+        help="Also generate from the base model for a side-by-side check",
+    )
     return parser.parse_args()
+
+
+def generate(model, tokenizer, prompt: str, max_new_tokens: int) -> str:
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+    ).removeprefix("<bos>")
+    inputs = tokenizer(text, return_tensors="pt").to("cuda")
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        use_cache=True,
+        streamer=TextStreamer(tokenizer, skip_prompt=True),
+    )
+    return tokenizer.batch_decode(
+        outputs[:, inputs["input_ids"].shape[1] :],
+        skip_special_tokens=True,
+    )[0]
 
 
 def main() -> None:
     args = parse_args()
     token = os.environ.get("HF_TOKEN") or None
     adapter_dir = Path(args.adapter_dir)
-
     model_name = str(adapter_dir) if adapter_dir.exists() else args.model_name
+
     model, tokenizer = FastModel.from_pretrained(
         model_name=model_name,
         max_seq_length=args.max_seq_length,
         load_in_4bit=args.load_in_4bit,
         token=token,
     )
-    tokenizer = get_chat_template(tokenizer, chat_template="gemma-3")
-    FastModel.for_inference(model)
+    tokenizer = get_chat_template(tokenizer, chat_template="gemma3")
 
-    messages = [
-        {
-            "role": "user",
-            "content": [{"type": "text", "text": args.prompt}],
-        }
-    ]
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        tokenize=True,
-        return_tensors="pt",
-        return_dict=True,
-    ).to("cuda")
+    print("--- Fine-Tuned Model Output ---")
+    generate(model, tokenizer, args.prompt, args.max_new_tokens)
 
-    outputs = model.generate(
-        **inputs,
-        max_new_tokens=args.max_new_tokens,
-        temperature=1.0,
-        top_p=0.95,
-        top_k=64,
-    )
-    print(tokenizer.batch_decode(outputs)[0])
+    if args.compare_base:
+        print("\n--- Base Model Output ---")
+        base_model, _ = FastModel.from_pretrained(
+            model_name=args.model_name,
+            max_seq_length=args.max_seq_length,
+            load_in_4bit=True,
+            token=token,
+        )
+        generate(base_model, tokenizer, args.prompt, args.max_new_tokens)
 
 
 if __name__ == "__main__":
