@@ -1,0 +1,11 @@
+.git
+.env
+.cache
+outputs
+__pycache__
+*.py[cod]
+.venv
+venv
+.ipynb_checkpoints
+*.gguf
+README.md

@@ -1,0 +1,7 @@
+# Used only for local (non-Docker) installs. Prefer the official Unsloth image.
+unsloth
+datasets
+trl
+transformers==4.56.2
+huggingface_hub
+hf_transfer

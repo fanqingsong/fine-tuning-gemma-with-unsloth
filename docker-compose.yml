@@ -1,0 +1,52 @@
+services:
+  train:
+    build: .
+    working_dir: /workspace/work
+    env_file:
+      - .env
+    environment:
+      HF_HOME: /workspace/work/.cache/huggingface
+      HF_HUB_ENABLE_HF_TRANSFER: "1"
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_ENDPOINT: ${HF_ENDPOINT:-}
+      MODEL_NAME: ${MODEL_NAME:-unsloth/gemma-3-4b-it}
+    volumes:
+      - .:/workspace/work
+    command: ["python", "src/train.py"]
+    stdin_open: true
+    tty: true
+    shm_size: "16gb"
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  infer:
+    build: .
+    working_dir: /workspace/work
+    env_file:
+      - .env
+    environment:
+      HF_HOME: /workspace/work/.cache/huggingface
+      HF_HUB_ENABLE_HF_TRANSFER: "1"
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_ENDPOINT: ${HF_ENDPOINT:-}
+      MODEL_NAME: ${MODEL_NAME:-unsloth/gemma-3-4b-it}
+    volumes:
+      - .:/workspace/work
+    command: ["python", "src/infer.py"]
+    stdin_open: true
+    tty: true
+    shm_size: "16gb"
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
