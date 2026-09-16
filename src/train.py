@@ -5,12 +5,17 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
-from datasets import Dataset, load_dataset
-from trl import SFTConfig, SFTTrainer
-from unsloth import FastModel
-from unsloth.chat_templates import (
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hf_setup  # noqa: E402  — sanitize HF env before unsloth
+import unsloth  # noqa: F401,E402  — must precede trl / transformers / peft
+
+from datasets import Dataset, load_dataset  # noqa: E402
+from trl import SFTConfig, SFTTrainer  # noqa: E402
+from unsloth import FastModel  # noqa: E402
+from unsloth.chat_templates import (  # noqa: E402
     get_chat_template,
     train_on_responses_only,
 )
@@ -26,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fine-tune Gemma 3 270M with Unsloth")
     parser.add_argument(
         "--model-name",
-        default=os.environ.get("MODEL_NAME", "unsloth/gemma-3-270m-it"),
+        default=hf_setup.model_name_from_env(),
         help="Base model on Hugging Face",
     )
     parser.add_argument(
@@ -130,8 +135,9 @@ def main() -> None:
     token = os.environ.get("HF_TOKEN") or None
     lora_alpha = args.lora_alpha if args.lora_alpha is not None else args.lora_r * 2
 
-    model, tokenizer = FastModel.from_pretrained(
-        model_name=args.model_name,
+    model, tokenizer = hf_setup.load_fast_model(
+        FastModel,
+        args.model_name,
         max_seq_length=args.max_seq_length,
         load_in_4bit=args.load_in_4bit,
         load_in_8bit=False,

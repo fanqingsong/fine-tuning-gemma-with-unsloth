@@ -12,7 +12,8 @@ Python scripts for LoRA fine-tuning of **Gemma 3 270M Instruct**, packaged with 
 
 ```bash
 cp .env.example .env
-# Optional: HF_TOKEN, HF_ENDPOINT (e.g. https://hf-mirror.com), MODEL_NAME
+# Edit .env: set HF_ENDPOINT=https://hf-mirror.com if huggingface.co is unreachable.
+# Do not leave HF_ENDPOINT empty. Optional: HF_TOKEN, MODEL_NAME.
 ```
 
 Build the image (based on the official `unsloth/unsloth` image, pulled via a China mirror):

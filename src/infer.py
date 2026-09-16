@@ -5,11 +5,16 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
-from transformers import TextStreamer
-from unsloth import FastModel
-from unsloth.chat_templates import get_chat_template
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hf_setup  # noqa: E402  — sanitize HF env before unsloth
+import unsloth  # noqa: F401,E402  — must precede transformers / peft
+
+from transformers import TextStreamer  # noqa: E402
+from unsloth import FastModel  # noqa: E402
+from unsloth.chat_templates import get_chat_template  # noqa: E402
 
 SYSTEM_PROMPT = (
     "You are a master storyteller. Write a short, imaginative story based on "
@@ -21,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Infer with a fine-tuned Gemma 3 270M adapter")
     parser.add_argument(
         "--model-name",
-        default=os.environ.get("MODEL_NAME", "unsloth/gemma-3-270m-it"),
+        default=hf_setup.model_name_from_env(),
     )
     parser.add_argument("--adapter-dir", default="outputs/lora")
     parser.add_argument(
@@ -72,8 +77,9 @@ def main() -> None:
     adapter_dir = Path(args.adapter_dir)
     model_name = str(adapter_dir) if adapter_dir.exists() else args.model_name
 
-    model, tokenizer = FastModel.from_pretrained(
-        model_name=model_name,
+    model, tokenizer = hf_setup.load_fast_model(
+        FastModel,
+        model_name,
         max_seq_length=args.max_seq_length,
         load_in_4bit=args.load_in_4bit,
         token=token,
@@ -85,8 +91,9 @@ def main() -> None:
 
     if args.compare_base:
         print("\n--- Base Model Output ---")
-        base_model, _ = FastModel.from_pretrained(
-            model_name=args.model_name,
+        base_model, _ = hf_setup.load_fast_model(
+            FastModel,
+            args.model_name,
             max_seq_length=args.max_seq_length,
             load_in_4bit=True,
             token=token,
