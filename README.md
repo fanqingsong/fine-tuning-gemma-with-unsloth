@@ -14,6 +14,7 @@ Python scripts for LoRA fine-tuning of **Gemma 3 270M Instruct**, packaged with 
 cp .env.example .env
 # Edit .env: set HF_ENDPOINT=https://hf-mirror.com if huggingface.co is unreachable.
 # Do not leave HF_ENDPOINT empty. Optional: HF_TOKEN, MODEL_NAME.
+# GOOGLE_API_KEY is only needed if you regenerate stories with src/generate_data.py.
 ```
 
 Build the image (based on the official `unsloth/unsloth` image, pulled via a China mirror):
@@ -24,19 +25,27 @@ docker compose build
 
 ## Train
 
-Default run (Gemma 3 270M Instruct, `chongcht/synthetic-creative-writing`, 100 steps):
+Default run (Gemma 3 270M Instruct, Hub dataset `chongcht/synthetic-creative-writing`, 100 steps):
 
 ```bash
 docker compose run --rm train
 ```
 
-Smoke test with the bundled sample dataset:
+Train on the bundled local stories (no Hub download, no `GOOGLE_API_KEY`):
+
+```bash
+docker compose run --rm train --dataset data/synthetic-creative-writing.jsonl
+```
+
+`data/synthetic-creative-writing.jsonl` is one short story per theme in `data/story_themes.json`, in the same `prompt` / `response` jsonl format as `src/generate_data.py`. Use it when the Hub dataset is unreachable or you do not have a Gemini key.
+
+Smoke test with the tiny sample file:
 
 ```bash
 docker compose run --rm train --dataset data/sample.jsonl --max-steps 10 --max-samples 3
 ```
 
-Notebook-aligned flags:
+Notebook-aligned flags (Hub dataset):
 
 ```bash
 docker compose run --rm train \
@@ -49,10 +58,23 @@ docker compose run --rm train \
   --output-dir outputs/lora
 ```
 
-Full epoch instead of a step cap:
+Same flags with the local jsonl:
 
 ```bash
-docker compose run --rm train --num-train-epochs 1
+docker compose run --rm train \
+  --model-name unsloth/gemma-3-270m-it \
+  --dataset data/synthetic-creative-writing.jsonl \
+  --max-steps 100 \
+  --lora-r 16 \
+  --per-device-train-batch-size 8 \
+  --gradient-accumulation-steps 2 \
+  --output-dir outputs/lora
+```
+
+Full epoch instead of a step cap (add `--dataset data/synthetic-creative-writing.jsonl` to stay on the local file):
+
+```bash
+docker compose run --rm train --dataset data/synthetic-creative-writing.jsonl --num-train-epochs 1
 ```
 
 Save a merged 16-bit model after training:
@@ -83,33 +105,33 @@ docker compose run --rm infer --compare-base
 
 If `outputs/lora` exists, it is loaded automatically. Otherwise the base model is used.
 
-## Optional: regenerate synthetic stories
+## Dataset: local stories vs Gemini
 
-The notebook can call the Gemini Batch API. This project defaults to the public pre-generated Hub dataset. To rebuild from `data/story_themes.json`:
+You do **not** need `GOOGLE_API_KEY` to train. Prefer this order:
+
+1. **Bundled local file** — `data/synthetic-creative-writing.jsonl` (same jsonl schema as `src/generate_data.py`: one `{"prompt", "response"}` object per line).
+2. **Hub dataset** — `chongcht/synthetic-creative-writing` (default `--dataset` if you omit the flag).
+3. **Gemini rebuild** — only if you want new stories from `data/story_themes.json`.
 
 ```bash
-# requires GOOGLE_API_KEY
+# requires GOOGLE_API_KEY in .env
 docker compose run --rm --entrypoint python train src/generate_data.py
 ```
 
-Then train on the local file:
-
-```bash
-docker compose run --rm train --dataset data/synthetic-creative-writing.jsonl
-```
+That overwrites `data/synthetic-creative-writing.jsonl` (default `--multiplier 8`, so each theme is repeated). Then train as above with `--dataset data/synthetic-creative-writing.jsonl`.
 
 ## Local run (no Docker)
 
 Install Unsloth per the [official install guide](https://docs.unsloth.ai/get-started/installing-+-updating), then:
 
 ```bash
-python src/train.py --dataset data/sample.jsonl --max-steps 10
+python src/train.py --dataset data/synthetic-creative-writing.jsonl --max-steps 100
 python src/infer.py --prompt "A robot who discovers music for the first time."
 ```
 
 ## Dataset formats
 
-Hugging Face datasets or local `.json` / `.jsonl` files are supported. The original notebook uses `prompt` / `response`:
+Hugging Face datasets or local `.json` / `.jsonl` files are supported. The bundled `data/synthetic-creative-writing.jsonl` and `data/sample.jsonl` use `prompt` / `response`:
 
 ```json
 {"prompt": "A city where shadows have a life of their own.", "response": "..."}
