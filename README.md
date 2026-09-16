@@ -89,7 +89,7 @@ The notebook can call the Gemini Batch API. This project defaults to the public 
 
 ```bash
 # requires GOOGLE_API_KEY
-docker compose run --rm train python src/generate_data.py
+docker compose run --rm --entrypoint python train src/generate_data.py
 ```
 
 Then train on the local file:
