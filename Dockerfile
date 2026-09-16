@@ -1,4 +1,4 @@
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/unsloth/unsloth:latest
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/unsloth/unsloth:stable
 
 WORKDIR /workspace/work
 
