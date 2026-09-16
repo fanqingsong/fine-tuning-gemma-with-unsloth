@@ -1,0 +1,6 @@
+{"prompt": "A city where shadows have a life of their own.", "split": "in_distribution"}
+{"prompt": "A robot who discovers music for the first time.", "split": "in_distribution"}
+{"prompt": "A detective who solves crimes in a city powered by steam.", "split": "in_distribution"}
+{"prompt": "A subway that only stops at forgotten memories.", "split": "held_out"}
+{"prompt": "A lighthouse that writes letters to ships that never arrive.", "split": "held_out"}
+{"prompt": "A baker who sells silence by the slice.", "split": "held_out"}

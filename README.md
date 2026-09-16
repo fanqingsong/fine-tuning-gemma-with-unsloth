@@ -91,19 +91,47 @@ The LoRA adapter is written to `outputs/lora`. Training uses full precision (`--
 docker compose run --rm infer
 ```
 
-Custom prompt (same default theme as the notebook):
+Custom prompt (same default theme as the notebook). Repeat `--prompt` to run several:
 
 ```bash
 docker compose run --rm infer --prompt "A city where shadows have a life of their own." --max-new-tokens 1024
 ```
 
-Compare the adapter against the base model:
+If `outputs/lora` exists, it is loaded automatically. Otherwise the base model is used.
+
+## Compare adapter vs base
+
+`--compare-base` runs the **same** prompts on the LoRA adapter and the base model, with matching precision (`--load-in-4bit` / `--no-load-in-4bit`) and matching decoding (greedy by default, `--seed 3407`). Training loss is not a quality score; read the paired stories.
+
+Single prompt:
 
 ```bash
-docker compose run --rm infer --compare-base
+docker compose run --rm infer --compare-base \
+  --prompt "A city where shadows have a life of their own."
 ```
 
-If `outputs/lora` exists, it is loaded automatically. Otherwise the base model is used.
+Batch file (bundled mix of training themes and held-out themes). Results are written to `outputs/compare.jsonl` unless you pass `--output`:
+
+```bash
+docker compose run --rm infer --compare-base --prompts-file data/eval_prompts.jsonl
+```
+
+Each JSONL row has `prompt`, `split` (`in_distribution` or `held_out`), `adapter`, and `base`. Judge by whether the adapter writes a concise on-theme story (not an outline or refusal), stays short, and still works on `held_out` prompts instead of echoing the training set.
+
+`--prompts-file` accepts:
+
+- `.jsonl` — `{"prompt": "...", "split": "held_out"}` per line (`split` is optional)
+- `.json` — a string list or a list of the same objects
+- `.txt` — one prompt per line (`#` comments allowed)
+
+Sampling (off by default so runs are comparable):
+
+```bash
+docker compose run --rm infer --compare-base --prompts-file data/eval_prompts.jsonl \
+  --do-sample --temperature 0.7 --seed 3407
+```
+
+Use `--load-in-4bit` only if you want **both** models quantized; 270M is intended to run in full precision.
 
 ## Dataset: local stories vs Gemini
 
@@ -127,6 +155,7 @@ Install Unsloth per the [official install guide](https://docs.unsloth.ai/get-sta
 ```bash
 python src/train.py --dataset data/synthetic-creative-writing.jsonl --max-steps 100
 python src/infer.py --prompt "A robot who discovers music for the first time."
+python src/infer.py --compare-base --prompts-file data/eval_prompts.jsonl
 ```
 
 ## Dataset formats
